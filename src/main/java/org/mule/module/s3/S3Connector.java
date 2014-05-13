@@ -687,16 +687,18 @@ public class S3Connector
     /**
      * Login to Amazon S3
      *
+     * @param urlHost The url of the host provided by Ceph Storage
      * @param accessKey The access key provided by Amazon, needed for non annoynous operations
      * @param secretKey The secrete key provided by Amazon, needed for non annoynous operations
+     * @param isHttp The isHttp indicate if set the connection over HTTP
      * @throws ConnectionException
      */
     @Connect
-    public synchronized void connect(@ConnectionKey String accessKey, String secretKey) throws ConnectionException
+    public synchronized void connect(String urlHost, @ConnectionKey String accessKey, String secretKey, boolean isHttp) throws ConnectionException
     {
         if (client == null)
         {
-            client = new SimpleAmazonS3AmazonDevKitImpl(createAmazonS3(accessKey, secretKey));
+            client = new SimpleAmazonS3AmazonDevKitImpl(createAmazonS3(accessKey, secretKey, urlHost, isHttp));
         }
     }
 
@@ -723,7 +725,7 @@ public class S3Connector
      * 
      * @return a new {@link AmazonS3}
      */
-    private AmazonS3  createAmazonS3(String accessKey, String secretKey)
+    private AmazonS3  createAmazonS3(String accessKey, String secretKey,String urlHost, boolean isHttp)
     {
         ClientConfiguration clientConfig = new ClientConfiguration();
         if (proxyUsername != null)
@@ -750,9 +752,22 @@ public class S3Connector
         {
             clientConfig.setSocketTimeout(socketTimeout);
         }
-
-        return new AmazonS3Client(createCredentials(accessKey, secretKey),
-            clientConfig);
+        
+        if(isHttp)
+        {
+        	clientConfig.setProtocol(Protocol.HTTP);
+        }
+        
+        
+        AmazonS3 conn = new AmazonS3Client(createCredentials(accessKey, secretKey),clientConfig);
+        
+        if (urlHost != null)
+        {
+        	conn.setEndpoint(urlHost);
+        }
+        
+        
+        return conn;
     }
 
     private AWSCredentials createCredentials(String accessKey, String secretKey)
